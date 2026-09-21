@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Skill Exchange — Login & Register</title>
+  <meta name="description" content="Join the Skill Exchange Platform. Trade skills, earn credits, and learn from experts — no money required." />
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    /* Auth-specific styles */
+    .auth-wrapper {
+      min-height:      100vh;
+      display:         flex;
+      align-items:     center;
+      justify-content: center;
+      padding:         2rem;
+    }
+
+    .auth-container {
+      display:               grid;
+      grid-template-columns: 1.1fr 1fr;
+      max-width:             900px;
+      width:                 100%;
+      background:            rgba(255,255,255,0.04);
+      border:                1px solid rgba(255,255,255,0.12);
+      border-radius:         28px;
+      overflow:              hidden;
+      backdrop-filter:       blur(20px);
+      box-shadow:            0 30px 80px rgba(0,0,0,0.6), 0 0 60px rgba(139,92,246,0.1);
+    }
+
+    /* Left panel — decorative */
+    .auth-hero {
+      padding:           3.5rem 3rem;
+      background:        linear-gradient(145deg, rgba(139,92,246,0.2) 0%, rgba(6,182,212,0.1) 100%);
+      border-right:      1px solid rgba(255,255,255,0.1);
+      display:           flex;
+      flex-direction:    column;
+      justify-content:   center;
+      position:          relative;
+      overflow:          hidden;
+    }
+
+    .auth-hero::before {
+      content:       '';
+      position:      absolute;
+      width:         300px;
+      height:        300px;
+      background:    radial-gradient(circle, rgba(139,92,246,0.25) 0%, transparent 70%);
+      top:           -80px;
+      right:         -80px;
+      border-radius: 50%;
+    }
+
+    .auth-hero .logo {
+      display:     flex;
+      align-items: center;
+      gap:         0.75rem;
+      margin-bottom: 2.5rem;
+    }
+
+    .auth-hero .logo-icon {
+      width:           48px;
+      height:          48px;
+      border-radius:   14px;
+      background:      linear-gradient(135deg, #8b5cf6, #06b6d4);
+      display:         flex;
+      align-items:     center;
+      justify-content: center;
+      font-size:       1.5rem;
+    }
+
+    .auth-hero .logo-text {
+      font-size:   1.3rem;
+      font-weight: 800;
+      line-height: 1.2;
+    }
+
+    .auth-hero h1 {
+      font-size:   2rem;
+      font-weight: 800;
+      line-height: 1.25;
+      margin-bottom: 1rem;
+    }
+
+    .auth-hero p {
+      font-size: 0.95rem;
+      line-height: 1.75;
+      margin-bottom: 2rem;
+    }
+
+    .feature-list { display: flex; flex-direction: column; gap: 0.75rem; }
+
+    .feature-item {
+      display:     flex;
+      align-items: center;
+      gap:         0.75rem;
+      font-size:   0.875rem;
+      color:       var(--text-secondary);
+    }
+
+    .feature-icon {
+      width:         32px;
+      height:        32px;
+      border-radius: 8px;
+      background:    rgba(255,255,255,0.06);
+      display:       flex;
+      align-items:   center;
+      justify-content: center;
+      font-size:     1rem;
+      flex-shrink:   0;
+    }
+
+    /* Right panel — forms */
+    .auth-form-panel {
+      padding:        3rem 2.5rem;
+      display:        flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .auth-tabs {
+      display:          grid;
+      grid-template-columns: 1fr 1fr;
+      background:       rgba(255,255,255,0.04);
+      border:           1px solid var(--border-glass);
+      border-radius:    12px;
+      padding:          4px;
+      margin-bottom:    2rem;
+    }
+
+    .auth-tab {
+      padding:       0.6rem;
+      text-align:    center;
+      border-radius: 8px;
+      font-weight:   600;
+      font-size:     0.9rem;
+      cursor:        pointer;
+      background:    transparent;
+      border:        none;
+      color:         var(--text-secondary);
+      font-family:   var(--font);
+      transition:    var(--transition);
+    }
+
+    .auth-tab.active {
+      background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+      color:      white;
+    }
+
+    .auth-form { display: none; flex-direction: column; gap: 1.1rem; }
+    .auth-form.active { display: flex; }
+
+    .auth-form h2 { margin-bottom: 0.25rem; }
+    .auth-form .subtitle { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem; }
+
+    .input-icon-wrap { position: relative; }
+    .input-icon-wrap .icon {
+      position:  absolute;
+      left:      0.9rem;
+      top:       50%;
+      transform: translateY(-50%);
+      opacity:   0.5;
+      font-size: 1rem;
+    }
+    .input-icon-wrap input { padding-left: 2.6rem; }
+
+    @media (max-width: 680px) {
+      .auth-container { grid-template-columns: 1fr; }
+      .auth-hero { display: none; }
+    }
+  </style>
+</head>
+<body>
+<div id="toast-container"></div>
+
+<div class="auth-wrapper">
+  <div class="auth-container">
+
+    <!-- Left: Hero Panel -->
+    <div class="auth-hero">
+      <div class="logo">
+        <div class="logo-icon">🔄</div>
+        <div>
+          <div class="logo-text gradient-text">Skill Exchange</div>
+          <div style="font-size:0.72rem;color:var(--text-muted);font-weight:500;">Barter-Based Learning</div>
+        </div>
+      </div>
+
+      <h1>Trade Skills,<br /><span class="gradient-text">Not Money</span></h1>
+      <p>Connect with experts, exchange knowledge, and grow together. Earn credits by teaching what you know.</p>
+
+      <div class="feature-list">
+        <div class="feature-item">
+          <div class="feature-icon">💡</div>
+          <span>Offer your skills & find learners</span>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">🤝</div>
+          <span>Mutual matching for fair exchanges</span>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">💰</div>
+          <span>Earn credits with every session</span>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">⭐</div>
+          <span>Build reputation with ratings</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Auth Forms -->
+    <div class="auth-form-panel">
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="tab-login"    onclick="switchTab('login')">Sign In</button>
+        <button class="auth-tab"        id="tab-register" onclick="switchTab('register')">Sign Up</button>
+      </div>
+
+      <!-- Login Form -->
+      <form class="auth-form active" id="form-login" novalidate>
+        <div>
+          <h2>Welcome back</h2>
+          <p class="subtitle">Sign in to continue your skill journey</p>
+        </div>
+        <div class="form-group">
+          <label for="login-email">Email address</label>
+          <div class="input-icon-wrap">
+            <span class="icon">✉️</span>
+            <input type="email" id="login-email" placeholder="you@example.com" required autocomplete="email" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="login-password">Password</label>
+          <div class="input-icon-wrap">
+            <span class="icon">🔒</span>
+            <input type="password" id="login-password" placeholder="••••••••" required autocomplete="current-password" />
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-full btn-lg" id="btn-login">
+          Sign In
+        </button>
+        <p style="text-align:center;font-size:0.8rem;color:var(--text-muted)">
+          No account? <a href="#" onclick="switchTab('register')" style="color:var(--accent-purple);text-decoration:none;font-weight:600">Create one →</a>
+        </p>
+      </form>
+
+      <!-- Register Form -->
+      <form class="auth-form" id="form-register" novalidate>
+        <div>
+          <h2>Create account</h2>
+          <p class="subtitle">Join thousands of skill exchangers today</p>
+        </div>
+        <div class="form-group">
+          <label for="reg-name">Full name</label>
+          <div class="input-icon-wrap">
+            <span class="icon">👤</span>
+            <input type="text" id="reg-name" placeholder="Alice Johnson" required autocomplete="name" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="reg-email">Email address</label>
+          <div class="input-icon-wrap">
+            <span class="icon">✉️</span>
+            <input type="email" id="reg-email" placeholder="you@example.com" required autocomplete="email" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="reg-password">Password <span style="font-weight:400;color:var(--text-muted)">(min 6 chars)</span></label>
+          <div class="input-icon-wrap">
+            <span class="icon">🔒</span>
+            <input type="password" id="reg-password" placeholder="••••••••" required autocomplete="new-password" />
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-full btn-lg" id="btn-register">
+          Create Account — Get 10 Free Credits
+        </button>
+        <p style="text-align:center;font-size:0.8rem;color:var(--text-muted)">
+          Already have an account? <a href="#" onclick="switchTab('login')" style="color:var(--accent-purple);text-decoration:none;font-weight:600">Sign in →</a>
+        </p>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script>
+  // If already logged in, redirect to dashboard
+  if (getToken() && getUser()) {
+    window.location.href = 'dashboard.html';
+  }
+
+  function switchTab(tab) {
+    document.getElementById('tab-login').classList.toggle('active', tab === 'login');
+    document.getElementById('tab-register').classList.toggle('active', tab === 'register');
+    document.getElementById('form-login').classList.toggle('active', tab === 'login');
+    document.getElementById('form-register').classList.toggle('active', tab === 'register');
+  }
+
+  // Login form submission
+  document.getElementById('form-login').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn   = document.getElementById('btn-login');
+    const email = document.getElementById('login-email').value.trim();
+    const pass  = document.getElementById('login-password').value;
+
+    if (!email || !pass) return showToast('Please fill in all fields.', 'error');
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Signing in...';
+
+    try {
+      const res = await fetch(`${API_BASE}/login`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ email, password: pass })
+      });
+      const data = await res.json();
+      if (data.success) {
+        saveSession(data.token, data.user);
+        showToast(`Welcome back, ${data.user.name}! 🎉`, 'success');
+        setTimeout(() => window.location.href = 'dashboard.html', 800);
+      } else {
+        showToast(data.message || 'Login failed.', 'error');
+      }
+    } catch {
+      showToast('Cannot reach server. Is the backend running?', 'error');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = 'Sign In';
+    }
+  });
+
+  // Register form submission
+  document.getElementById('form-register').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn      = document.getElementById('btn-register');
+    const name     = document.getElementById('reg-name').value.trim();
+    const email    = document.getElementById('reg-email').value.trim();
+    const password = document.getElementById('reg-password').value;
+
+    if (!name || !email || !password) return showToast('Please fill in all fields.', 'error');
+    if (password.length < 6) return showToast('Password must be at least 6 characters.', 'error');
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Creating account...';
+
+    try {
+      const res = await fetch(`${API_BASE}/register`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ name, email, password })
+      });
+      const data = await res.json();
+      if (data.success) {
+        saveSession(data.token, data.user);
+        showToast(`Welcome, ${data.user.name}! You have 10 starter credits 🎉`, 'success');
+        setTimeout(() => window.location.href = 'dashboard.html', 800);
+      } else {
+        showToast(data.message || 'Registration failed.', 'error');
+      }
+    } catch {
+      showToast('Cannot reach server. Is the backend running?', 'error');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = 'Create Account — Get 10 Free Credits';
+    }
+  });
+</script>
+</body>
+</html>

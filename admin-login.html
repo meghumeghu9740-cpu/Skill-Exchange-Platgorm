@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Login — Skill Exchange</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    .login-card {
+      width: 100%;
+      max-width: 400px;
+      padding: 2.5rem;
+    }
+    .login-header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    .login-header h1 {
+      font-size: 1.8rem;
+      margin-bottom: 0.5rem;
+    }
+    .login-header p {
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="card login-card">
+    <div class="login-header">
+      <h1 class="gradient-text">Admin Portal</h1>
+      <p>Sign in to manage the platform</p>
+    </div>
+
+    <form id="admin-login-form" class="form-group">
+      <div class="form-group">
+        <label for="email">Admin Email</label>
+        <input type="email" id="email" required placeholder="admin@skillexchange.com">
+      </div>
+      <div class="form-group" style="margin-top: 1rem;">
+        <label for="password">Password</label>
+        <input type="password" id="password" required placeholder="Enter your password">
+      </div>
+      <button type="submit" class="btn btn-primary btn-full" style="margin-top: 1.5rem;">Secure Login</button>
+    </form>
+    
+    <div style="margin-top: 1.5rem; text-align: center;">
+      <a href="index.html" style="color: var(--text-muted); font-size: 0.85rem; text-decoration: none;">&larr; Back to Main Site</a>
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+
+  <script src="app.js"></script>
+  <script>
+    document.getElementById('admin-login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+
+      try {
+        const res = await fetch('/api/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+          localStorage.setItem('adminToken', data.token);
+          localStorage.setItem('adminUser', JSON.stringify(data.admin));
+          window.location.href = 'admin.html';
+        } else {
+          showToast(data.message || 'Login failed', 'error');
+        }
+      } catch (err) {
+        showToast('Server error during login', 'error');
+      }
+    });
+  </script>
+</body>
+</html>

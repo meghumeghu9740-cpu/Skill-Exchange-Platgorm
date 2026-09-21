@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Requests — Skill Exchange Platform</title>
+  <meta name="description" content="Manage your pending, accepted, and completed skill exchange requests." />
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .request-card {
+      background:    var(--bg-card);
+      border:        1px solid var(--border-glass);
+      border-radius: var(--radius-md);
+      padding:       1.25rem 1.5rem 1.25rem 1.75rem;
+      display:       flex;
+      align-items:   center;
+      gap:           1.25rem;
+      flex-wrap:     wrap;
+      transition:    var(--transition);
+    }
+    .request-card:hover { border-color: var(--border-hover); background: var(--bg-card-hover); }
+    .req-info { flex: 1; min-width: 180px; }
+    .req-user { font-weight: 700; font-size: 0.95rem; display: flex; align-items: center; gap: 0.4rem; }
+    .req-rating { font-size: 0.75rem; color: #f59e0b; margin-left: 4px; }
+    .req-skills { font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; }
+    .req-date   { font-size: 0.72rem; color: var(--text-muted); margin-top: 4px; }
+    .req-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; }
+
+    /* Highlight search match */
+    mark { background: rgba(139,92,246,0.35); color: var(--text-primary); border-radius: 3px; padding: 0 2px; }
+  </style>
+</head>
+<body>
+<div id="toast-container"></div>
+
+<nav class="navbar">
+  <div class="container">
+    <a href="dashboard.html" class="navbar-brand">
+      <div class="logo-icon">🔄</div>
+      <span>Skill Exchange</span>
+    </a>
+    <ul class="navbar-nav">
+      <li><a href="dashboard.html">🏠 Dashboard</a></li>
+      <li><a href="add-skills.html">➕ Add Skills</a></li>
+      <li><a href="match.html">🤝 Match</a></li>
+      <li><a href="requests.html" class="active">📬 Requests</a></li>
+      <li><a href="profile.html">👤 Profile</a></li>
+      <li><span class="nav-credits-badge" id="nav-credits">💰 — credits</span></li>
+      <li><button class="btn-logout" id="btn-logout">Sign Out</button></li>
+    </ul>
+  </div>
+</nav>
+
+<main class="container" style="padding-bottom:4rem;">
+
+  <div class="page-header">
+    <h1>📬 <span class="gradient-text">Exchange Requests</span></h1>
+    <p>Manage requests you've sent and received. Accept, reject, cancel, or complete exchanges.</p>
+  </div>
+
+  <!-- Stats Bar -->
+  <div class="req-stats-bar" id="req-stats-bar">
+    <div class="req-stat-chip chip-pending">⏳ Pending <span class="chip-val" id="stat-pending">—</span></div>
+    <div class="req-stat-chip chip-accepted">✅ Accepted <span class="chip-val" id="stat-accepted">—</span></div>
+    <div class="req-stat-chip chip-sent">📤 Sent <span class="chip-val" id="stat-sent">—</span></div>
+    <div class="req-stat-chip chip-done">🎉 Completed <span class="chip-val" id="stat-completed">—</span></div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab-btn active" id="tab-received" onclick="switchTab('received')">
+      📥 Received <span class="tab-count" id="badge-recv">0</span>
+    </button>
+    <button class="tab-btn" id="tab-sent" onclick="switchTab('sent')">
+      📤 Sent <span class="tab-count" id="badge-sent">0</span>
+    </button>
+    <button class="tab-btn" id="tab-completed" onclick="switchTab('completed')">
+      ✅ Completed <span class="tab-count" id="badge-done">0</span>
+    </button>
+  </div>
+
+  <!-- Search + Sort Controls -->
+  <div class="req-controls">
+    <div class="req-search-wrap">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="req-search" placeholder="Search by name or skill…" oninput="applyFilters()" />
+    </div>
+    <select id="req-sort" onchange="applyFilters()">
+      <option value="date-desc">📅 Newest First</option>
+      <option value="date-asc">📅 Oldest First</option>
+      <option value="name-asc">🔤 Name A → Z</option>
+      <option value="name-desc">🔤 Name Z → A</option>
+    </select>
+  </div>
+
+  <!-- Received Requests -->
+  <div id="tab-received-content" class="tab-content active">
+    <div class="section-title"><span>📥</span> Requests From Others</div>
+    <div id="received-list">
+      <div class="spinner" style="margin:2rem auto;display:block;"></div>
+    </div>
+  </div>
+
+  <!-- Sent Requests -->
+  <div id="tab-sent-content" class="tab-content">
+    <div class="section-title"><span>📤</span> Requests You Sent</div>
+    <div id="sent-list">
+      <div class="spinner" style="margin:2rem auto;display:block;"></div>
+    </div>
+  </div>
+
+  <!-- Completed Exchanges -->
+  <div id="tab-completed-content" class="tab-content">
+    <div class="section-title"><span>✅</span> Completed Exchanges</div>
+    <div id="completed-list">
+      <div class="spinner" style="margin:2rem auto;display:block;"></div>
+    </div>
+  </div>
+
+</main>
+
+<!-- Rate User Modal -->
+<div class="modal-overlay" id="modal-rate">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>⭐ Rate Your Experience</h3>
+      <button class="modal-close" onclick="closeModal('modal-rate')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:0.875rem;">Rate your exchange with <strong id="rate-username"></strong></p>
+      <div class="form-group">
+        <label>Rating</label>
+        <div style="display:flex;gap:0.5rem;font-size:1.8rem;cursor:pointer;" id="star-picker">
+          <span class="star-btn" data-v="1" onclick="selectStar(1)">☆</span>
+          <span class="star-btn" data-v="2" onclick="selectStar(2)">☆</span>
+          <span class="star-btn" data-v="3" onclick="selectStar(3)">☆</span>
+          <span class="star-btn" data-v="4" onclick="selectStar(4)">☆</span>
+          <span class="star-btn" data-v="5" onclick="selectStar(5)">☆</span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="rate-feedback">Feedback <span style="font-weight:400;color:var(--text-muted)">(optional)</span></label>
+        <textarea id="rate-feedback" placeholder="How was the experience? Share details to help the community…"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-rate')">Cancel</button>
+      <button class="btn btn-primary" id="btn-submit-rating" onclick="submitRating()">Submit Rating ⭐</button>
+    </div>
+  </div>
+</div>
+
+<!-- Chat Modal -->
+<div class="modal-overlay" id="modal-chat">
+  <div class="modal" style="padding: 1.5rem; max-width: 500px;">
+    <div class="modal-header">
+      <h3>💬 Chat with <span class="gradient-text" id="chat-username"></span></h3>
+      <button class="modal-close" onclick="closeChatModal()">✕</button>
+    </div>
+    <div class="modal-body" style="padding:0; margin: 0 -1.5rem -1.5rem -1.5rem;">
+      <div class="chat-container" style="border:none; border-radius:0 0 var(--radius-xl) var(--radius-xl); border-top: 1px solid var(--border-glass);">
+        <div class="chat-messages" id="chat-messages">
+          <div class="spinner" style="margin:2rem auto;display:block;"></div>
+        </div>
+        <div class="chat-input-area">
+          <input type="text" id="chat-input" placeholder="Type a message…" onkeypress="if(event.key === 'Enter') sendChatMessage()">
+          <button class="btn btn-primary btn-sm" onclick="sendChatMessage()">Send 🚀</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script>
+requireAuth();
+
+// ============================================================
+// State
+// ============================================================
+let currentRating    = 0;
+let rateTargetUser   = null;
+let allReceived      = [];
+let allSent          = [];
+let allCompleted     = [];
+let currentTab       = 'received';
+
+const statusColors = { pending:'amber', accepted:'cyan', rejected:'red', completed:'green' };
+const statusIcons  = { pending:'⏳', accepted:'✅', rejected:'❌', completed:'🎉' };
+
+document.addEventListener('DOMContentLoaded', loadRequests);
+
+// ============================================================
+// Data Loading
+// ============================================================
+async function loadRequests() {
+  const data = await apiGet('/my-requests');
+  if (!data || !data.success) {
+    showToast('Failed to load requests.', 'error');
+    return;
+  }
+
+  const { sent, received } = data;
+
+  allReceived  = received.filter(r => r.status === 'pending' || r.status === 'accepted');
+  allSent      = sent.filter(r => r.status !== 'completed');
+  allCompleted = [
+    ...sent.filter(r => r.status === 'completed').map(r => ({...r, type:'sent'})),
+    ...received.filter(r => r.status === 'completed').map(r => ({...r, type:'received'}))
+  ].sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+
+  updateStats(sent, received);
+  updateBadges();
+  applyFilters();
+}
+
+// ============================================================
+// Stats + Badges
+// ============================================================
+function updateStats(sent, received) {
+  const pendingCount  = received.filter(r => r.status === 'pending').length;
+  const acceptedCount = received.filter(r => r.status === 'accepted').length
+                      + sent.filter(r => r.status === 'accepted').length;
+  const sentCount     = sent.filter(r => r.status === 'pending').length;
+  const doneCount     = sent.filter(r => r.status === 'completed').length
+                      + received.filter(r => r.status === 'completed').length;
+
+  document.getElementById('stat-pending').textContent   = pendingCount;
+  document.getElementById('stat-accepted').textContent  = acceptedCount;
+  document.getElementById('stat-sent').textContent      = sentCount;
+  document.getElementById('stat-completed').textContent = doneCount;
+}
+
+function updateBadges() {
+  document.getElementById('badge-recv').textContent = allReceived.length;
+  document.getElementById('badge-sent').textContent = allSent.length;
+  document.getElementById('badge-done').textContent = allCompleted.length;
+}
+
+// ============================================================
+// Search / Sort / Filter
+// ============================================================
+function applyFilters() {
+  const query = (document.getElementById('req-search').value || '').toLowerCase().trim();
+  const sort  = document.getElementById('req-sort').value;
+
+  const filter = items => {
+    let out = items.filter(r => {
+      if (!query) return true;
+      return (r.other_user_name || '').toLowerCase().includes(query)
+          || (r.skill_offered   || '').toLowerCase().includes(query)
+          || (r.skill_requested || '').toLowerCase().includes(query);
+    });
+
+    if      (sort === 'date-desc') out.sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+    else if (sort === 'date-asc')  out.sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
+    else if (sort === 'name-asc')  out.sort((a,b) => a.other_user_name.localeCompare(b.other_user_name));
+    else if (sort === 'name-desc') out.sort((a,b) => b.other_user_name.localeCompare(a.other_user_name));
+    return out;
+  };
+
+  renderReceived(filter(allReceived), query);
+  renderSent(filter(allSent), query);
+  renderCompleted(filter(allCompleted), query);
+}
+
+// Wrap matched text in <mark>
+function highlight(text, query) {
+  if (!query) return text;
+  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return text.replace(new RegExp(`(${escaped})`, 'gi'), '<mark>$1</mark>');
+}
+
+// ============================================================
+// Render Functions
+// ============================================================
+function renderReceived(items, query = '') {
+  const el = document.getElementById('received-list');
+  if (items.length === 0) {
+    el.innerHTML = query
+      ? `<div class="no-results"><span class="no-results-icon">🔍</span>No requests match "<strong>${query}</strong>"</div>`
+      : `<div class="empty-state"><div class="empty-icon">📭</div><h4>No incoming requests</h4><p>When someone sends you an exchange request, it appears here.</p></div>`;
+    return;
+  }
+
+  el.innerHTML = `<div style="display:flex;flex-direction:column;gap:0.75rem;">
+    ${items.map(r => `
+      <div class="request-card" id="req-${r.request_id}" data-status="${r.status}">
+        <div class="req-info">
+          <div class="req-user">👤 ${highlight(r.other_user_name, query)}
+            ${r.other_user_rating ? `<span class="req-rating">★ ${parseFloat(r.other_user_rating).toFixed(1)}</span>` : ''}
+          </div>
+          <div class="req-skills">📚 ${highlight(r.skill_offered, query)} ↔ 🎯 ${highlight(r.skill_requested, query)}</div>
+          <div class="req-date">🗓 ${new Date(r.created_at).toLocaleDateString(undefined, {year:'numeric',month:'short',day:'numeric'})}</div>
+        </div>
+        <span class="badge badge-${statusColors[r.status]}">${statusIcons[r.status]} ${r.status}</span>
+        <div class="req-actions">
+          ${r.status === 'pending' ? `
+            <button class="btn btn-green btn-sm" onclick="updateStatus(${r.request_id}, 'accepted')">✅ Accept</button>
+            <button class="btn btn-red btn-sm"   onclick="updateStatus(${r.request_id}, 'rejected')">❌ Reject</button>
+          ` : r.status === 'accepted' ? `
+            <button class="btn btn-ghost btn-sm" onclick="openChatModal(${r.request_id}, '${r.other_user_name.replace("'","\\'")}')">💬 Chat</button>
+            <span style="color:var(--text-muted);font-size:0.8rem;">Waiting for sender to complete</span>
+          ` : `<span style="color:var(--text-muted);font-size:0.8rem;">Waiting for sender to complete</span>`}
+        </div>
+      </div>`).join('')}
+  </div>`;
+}
+
+function renderSent(items, query = '') {
+  const el = document.getElementById('sent-list');
+  if (items.length === 0) {
+    el.innerHTML = query
+      ? `<div class="no-results"><span class="no-results-icon">🔍</span>No requests match "<strong>${query}</strong>"</div>`
+      : `<div class="empty-state"><div class="empty-icon">📤</div><h4>No active sent requests</h4><p><a href="match.html" style="color:var(--accent-purple)">Find users to send a request →</a></p></div>`;
+    return;
+  }
+
+  el.innerHTML = `<div style="display:flex;flex-direction:column;gap:0.75rem;">
+    ${items.map(r => `
+      <div class="request-card" id="req-${r.request_id}" data-status="${r.status}">
+        <div class="req-info">
+          <div class="req-user">👤 ${highlight(r.other_user_name, query)}
+            ${r.other_user_rating ? `<span class="req-rating">★ ${parseFloat(r.other_user_rating).toFixed(1)}</span>` : ''}
+          </div>
+          <div class="req-skills">📚 ${highlight(r.skill_offered, query)} ↔ 🎯 ${highlight(r.skill_requested, query)}</div>
+          <div class="req-date">🗓 ${new Date(r.created_at).toLocaleDateString(undefined, {year:'numeric',month:'short',day:'numeric'})}</div>
+        </div>
+        <span class="badge badge-${statusColors[r.status]}">${statusIcons[r.status]} ${r.status}</span>
+        <div class="req-actions">
+          ${r.status === 'accepted' ? `
+            <button class="btn btn-ghost btn-sm" onclick="openChatModal(${r.request_id}, '${r.other_user_name.replace("'","\\'")}')">💬 Chat</button>
+            <button class="btn btn-amber btn-sm" onclick="completeExchange(${r.request_id}, this)">🎉 Mark Complete</button>
+          ` : r.status === 'pending' ? `
+            <span style="color:var(--text-muted);font-size:0.8rem;">Waiting for response…</span>
+            <button class="btn btn-sm btn-cancel" onclick="cancelRequest(${r.request_id}, this)">🗑 Cancel</button>
+          ` : `<span style="color:var(--text-muted);font-size:0.8rem;">Request ${r.status}</span>`}
+        </div>
+      </div>`).join('')}
+  </div>`;
+}
+
+function renderCompleted(items, query = '') {
+  const el = document.getElementById('completed-list');
+  if (items.length === 0) {
+    el.innerHTML = query
+      ? `<div class="no-results"><span class="no-results-icon">🔍</span>No completed exchanges match "<strong>${query}</strong>"</div>`
+      : `<div class="empty-state"><div class="empty-icon">🏆</div><h4>No completed exchanges yet</h4><p>Complete your first exchange to earn credits!</p></div>`;
+    return;
+  }
+
+  el.innerHTML = `<div style="display:flex;flex-direction:column;gap:0.75rem;">
+    ${items.map(r => `
+      <div class="request-card" data-status="completed">
+        <div class="req-info">
+          <div class="req-user">🎉 ${highlight(r.other_user_name, query)}</div>
+          <div class="req-skills">📚 ${highlight(r.skill_offered, query)} ↔ 🎯 ${highlight(r.skill_requested, query)}</div>
+          <div class="req-date">🗓 ${new Date(r.created_at).toLocaleDateString(undefined, {year:'numeric',month:'short',day:'numeric'})}</div>
+        </div>
+        <span class="badge badge-green">✅ completed</span>
+        <div class="req-actions">
+          <button class="btn btn-primary btn-sm" onclick="openRateModal(${r.other_user_id}, '${r.other_user_name.replace("'","\\'")}')">⭐ Rate</button>
+        </div>
+      </div>`).join('')}
+  </div>`;
+}
+
+// ============================================================
+// Actions
+// ============================================================
+async function updateStatus(requestId, status) {
+  const data = await apiPost('/update-request-status', { request_id: requestId, status });
+  if (data && data.success) {
+    showToast(`Request ${status}!`, status === 'accepted' ? 'success' : 'info');
+    await loadRequests();
+  } else {
+    showToast(data?.message || 'Failed.', 'error');
+  }
+}
+
+async function cancelRequest(requestId, btn) {
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>';
+
+  const data = await apiPost('/cancel-request', { request_id: requestId });
+  if (data && data.success) {
+    showToast('Request cancelled.', 'info');
+    // Remove from allSent in-place and re-render without full reload
+    allSent = allSent.filter(r => r.request_id !== requestId);
+    updateBadges();
+    applyFilters();
+  } else {
+    showToast(data?.message || 'Failed to cancel request.', 'error');
+    btn.disabled = false;
+    btn.innerHTML = '🗑 Cancel';
+  }
+}
+
+async function completeExchange(requestId, btn) {
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>';
+
+  const data = await apiPost('/complete-exchange', { request_id: requestId });
+  if (data && data.success) {
+    showToast(`${data.message} New balance: ${data.your_new_balance} credits 💰`, 'success');
+    document.getElementById('nav-credits').textContent = `💰 ${data.your_new_balance} credits`;
+    await loadRequests();
+  } else {
+    showToast(data?.message || 'Failed to complete exchange.', 'error');
+    btn.disabled = false;
+    btn.innerHTML = '🎉 Mark Complete';
+  }
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  ['received', 'sent', 'completed'].forEach(t => {
+    document.getElementById(`tab-${t}`).classList.toggle('active', t === tab);
+    document.getElementById(`tab-${t}-content`).classList.toggle('active', t === tab);
+  });
+}
+
+// ============================================================
+// Rating Modal
+// ============================================================
+function openRateModal(userId, name) {
+  rateTargetUser = userId;
+  currentRating  = 0;
+  document.getElementById('rate-username').textContent = name;
+  document.getElementById('rate-feedback').value = '';
+  document.querySelectorAll('.star-btn').forEach(s => s.textContent = '☆');
+  openModal('modal-rate');
+}
+
+function selectStar(val) {
+  currentRating = val;
+  document.querySelectorAll('.star-btn').forEach(s => {
+    s.textContent = parseInt(s.dataset.v) <= val ? '★' : '☆';
+    s.style.color = parseInt(s.dataset.v) <= val ? '#f59e0b' : 'inherit';
+  });
+}
+
+async function submitRating() {
+  if (currentRating === 0) return showToast('Please select a star rating.', 'error');
+  const feedback = document.getElementById('rate-feedback').value.trim();
+
+  const btn = document.getElementById('btn-submit-rating');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>';
+
+  const data = await apiPost('/rate-user', {
+    to_user_id: rateTargetUser,
+    rating:     currentRating,
+    feedback
+  });
+
+  if (data && data.success) {
+    showToast('Rating submitted! ⭐', 'success');
+    closeModal('modal-rate');
+  } else {
+    showToast(data?.message || 'Failed to submit rating.', 'error');
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = 'Submit Rating ⭐';
+}
+
+// ============================================================
+// Chat System
+// ============================================================
+let currentChatRequestId = null;
+let chatPollInterval = null;
+
+function openChatModal(requestId, name) {
+  currentChatRequestId = requestId;
+  document.getElementById('chat-username').textContent = name;
+  document.getElementById('chat-messages').innerHTML = '<div class="spinner" style="margin:2rem auto;display:block;"></div>';
+  document.getElementById('chat-input').value = '';
+  openModal('modal-chat');
+  loadChatMessages();
+  if(chatPollInterval) clearInterval(chatPollInterval);
+  chatPollInterval = setInterval(loadChatMessages, 3000);
+}
+
+function closeChatModal() {
+  if (chatPollInterval) clearInterval(chatPollInterval);
+  closeModal('modal-chat');
+  currentChatRequestId = null;
+}
+
+async function loadChatMessages() {
+  if (!currentChatRequestId) return;
+  const data = await apiGet(`/messages/${currentChatRequestId}`);
+  if (data && data.success) {
+    const container = document.getElementById('chat-messages');
+    if (!currentChatRequestId) return;
+
+    const myIdStr = localStorage.getItem('se_user');
+    if (!myIdStr) return;
+    const myId = JSON.parse(myIdStr).user_id;
+
+    if (data.messages.length === 0) {
+      if (!container.innerHTML.includes('empty-state')) {
+        container.innerHTML = `<div class="empty-state" style="padding:1rem;"><div class="empty-icon" style="font-size:2rem;margin-bottom:0.5rem">💭</div><p>Start the conversation!</p></div>`;
+      }
+      return;
+    }
+
+    const isInitialLoad = container.innerHTML.includes('spinner');
+    const wasScrolledToBottom = isInitialLoad || (container.scrollHeight - container.clientHeight <= container.scrollTop + 30);
+
+    container.innerHTML = data.messages.map(m => {
+      const isMe = m.sender_id === myId;
+      const time = new Date(m.sent_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+      return `
+        <div class="chat-bubble ${isMe ? 'me' : 'them'}">
+          <div>${m.message_text}</div>
+          <span class="chat-time">${time}</span>
+        </div>`;
+    }).join('');
+
+    if (wasScrolledToBottom) {
+      container.scrollTop = container.scrollHeight;
+    }
+  }
+}
+
+async function sendChatMessage() {
+  if (!currentChatRequestId) return;
+  const input = document.getElementById('chat-input');
+  const message = input.value.trim();
+  if (!message) return;
+
+  input.disabled = true;
+  const data = await apiPost(`/messages/${currentChatRequestId}`, { message });
+  input.disabled = false;
+
+  if (data && data.success) {
+    input.value = '';
+    await loadChatMessages();
+    const container = document.getElementById('chat-messages');
+    container.scrollTop = container.scrollHeight;
+    input.focus();
+  } else {
+    showToast(data?.message || 'Failed to send message.', 'error');
+  }
+}
+</script>
+</body>
+</html>

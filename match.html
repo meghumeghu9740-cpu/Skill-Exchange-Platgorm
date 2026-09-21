@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Match Users — Skill Exchange Platform</title>
+  <meta name="description" content="Find users who want what you offer and offer what you want — mutual skill exchange matches." />
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .match-card {
+      background:    var(--bg-card);
+      border:        1px solid var(--border-glass);
+      border-radius: var(--radius-lg);
+      padding:       1.5rem;
+      backdrop-filter: blur(12px);
+      transition:    var(--transition);
+      display:       flex;
+      flex-direction: column;
+      gap:           1rem;
+    }
+    .match-card:hover {
+      border-color: rgba(139, 92, 246, 0.5);
+      transform:    translateY(-3px);
+      box-shadow:   0 0 30px rgba(139, 92, 246, 0.15), 0 8px 32px rgba(0,0,0,0.4);
+    }
+    .match-avatar {
+      width:           48px;
+      height:          48px;
+      border-radius:   50%;
+      background:      var(--grad-main);
+      display:         flex;
+      align-items:     center;
+      justify-content: center;
+      font-size:       1.3rem;
+      font-weight:     700;
+      color:           white;
+      flex-shrink:     0;
+    }
+    .exchange-arrow {
+      display:     flex;
+      align-items: center;
+      gap:         0.5rem;
+      font-size:   0.82rem;
+      color:       var(--text-secondary);
+      background:  var(--bg-glass);
+      border:      1px solid var(--border-glass);
+      border-radius: var(--radius-sm);
+      padding:     0.6rem 0.75rem;
+    }
+    .pair-label {
+      font-size:  0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color:      var(--text-muted);
+      margin-bottom: 2px;
+    }
+    .matches-grid {
+      display:               grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap:                   1.25rem;
+    }
+  </style>
+</head>
+<body>
+<div id="toast-container"></div>
+
+<nav class="navbar">
+  <div class="container">
+    <a href="dashboard.html" class="navbar-brand">
+      <div class="logo-icon">🔄</div>
+      <span>Skill Exchange</span>
+    </a>
+    <ul class="navbar-nav">
+      <li><a href="dashboard.html">🏠 Dashboard</a></li>
+      <li><a href="add-skills.html">➕ Add Skills</a></li>
+      <li><a href="match.html">🤝 Match</a></li>
+      <li><a href="requests.html">📬 Requests</a></li>
+      <li><a href="profile.html">👤 Profile</a></li>
+      <li><span class="nav-credits-badge" id="nav-credits">💰 — credits</span></li>
+      <li><button class="btn-logout" id="btn-logout">Sign Out</button></li>
+    </ul>
+  </div>
+</nav>
+
+<main class="container" style="padding-bottom:4rem;">
+
+  <div class="page-header">
+    <h1>🤝 <span class="gradient-text">Find Your Matches</span></h1>
+    <p>These users want what you offer — and offer what you want. A perfect mutual exchange!</p>
+  </div>
+
+  <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;flex-wrap:wrap;">
+    <button class="btn btn-primary" id="btn-refresh" onclick="loadMatches()">🔄 Refresh Matches</button>
+    <span id="match-count" style="color:var(--text-muted);font-size:0.875rem;"></span>
+  </div>
+
+  <div id="matches-container">
+    <div style="text-align:center;padding:4rem;">
+      <div class="spinner" style="margin:0 auto;width:36px;height:36px;border-width:4px;"></div>
+      <p style="margin-top:1.5rem;color:var(--text-muted);">Finding your perfect matches…</p>
+    </div>
+  </div>
+
+</main>
+
+<!-- Send Request Modal -->
+<div class="modal-overlay" id="modal-request">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>📬 Send Exchange Request</h3>
+      <button class="modal-close" onclick="closeModal('modal-request')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:0.875rem;">You're about to request a skill exchange with <strong id="modal-username"></strong>.</p>
+
+      <div style="background:var(--bg-glass);border:1px solid var(--border-glass);border-radius:var(--radius-md);padding:1rem;display:flex;flex-direction:column;gap:0.6rem;">
+        <div>
+          <div class="pair-label">You Offer</div>
+          <span class="badge badge-purple" id="modal-you-offer">—</span>
+        </div>
+        <div style="color:var(--text-muted);font-size:1.2rem;text-align:center;">⇅</div>
+        <div>
+          <div class="pair-label">You Receive</div>
+          <span class="badge badge-cyan" id="modal-you-receive">—</span>
+        </div>
+      </div>
+
+      <p style="font-size:0.8rem;color:var(--text-muted);">After acceptance and completion, 5 credits will be transferred. Make sure you have enough credits!</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-request')">Cancel</button>
+      <button class="btn btn-primary" id="btn-confirm-request" onclick="confirmRequest()">Send Request 🚀</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script>
+requireAuth();
+
+let pendingRequest = {};
+
+document.addEventListener('DOMContentLoaded', loadMatches);
+
+async function loadMatches() {
+  const btn = document.getElementById('btn-refresh');
+  btn.disabled = true;
+  document.getElementById('matches-container').innerHTML = `
+    <div style="text-align:center;padding:4rem;">
+      <div class="spinner" style="margin:0 auto;width:36px;height:36px;border-width:4px;"></div>
+      <p style="margin-top:1.5rem;color:var(--text-muted);">Finding your perfect matches…</p>
+    </div>`;
+
+  const data = await apiGet('/match-users');
+  btn.disabled = false;
+
+  if (!data || !data.success) {
+    document.getElementById('matches-container').innerHTML = `
+      <div class="card empty-state">
+        <div class="empty-icon">😔</div>
+        <h4>Couldn't load matches</h4>
+        <p>There was a server error. Please try again.</p>
+      </div>`;
+    return;
+  }
+
+  const matches = data.matches || [];
+  const count   = matches.length;
+
+  const mutualCount  = matches.filter(m => m.match_type === 'mutual').length;
+  const partialCount = count - mutualCount;
+
+  document.getElementById('match-count').textContent = count === 0 ? '' :
+    `${mutualCount > 0 ? `🤝 ${mutualCount} mutual` : ''}${mutualCount > 0 && partialCount > 0 ? ' · ' : ''}${partialCount > 0 ? `📖 ${partialCount} one-way` : ''} match${count !== 1 ? 'es' : ''} found`;
+
+  if (count === 0) {
+    document.getElementById('matches-container').innerHTML = `
+      <div class="card empty-state" style="max-width:500px;margin:0 auto;">
+        <div class="empty-icon">🔍</div>
+        <h4>No matches found yet</h4>
+        <p>Add skills you <strong>want to learn</strong> so we can find users who teach them. Matches appear as soon as another user offers what you need.</p>
+        <a href="add-skills.html" class="btn btn-primary" style="margin-top:1.25rem">➕ Add Wanted Skills →</a>
+      </div>`;
+    return;
+  }
+
+  const cards = matches.map(m => buildMatchCard(m)).join('');
+  document.getElementById('matches-container').innerHTML = `<div class="matches-grid">${cards}</div>`;
+}
+
+function buildMatchCard(match) {
+  const initials  = match.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  const rating    = parseFloat(match.rating || 0).toFixed(1);
+  const stars     = renderStars(parseFloat(rating));
+  const isMutual  = match.match_type === 'mutual';
+  const levelColors = { beginner: 'green', intermediate: 'amber', expert: 'purple' };
+
+  // Find the best skill pair (prefer mutual pairs with highest score)
+  const pairs      = match.skill_pairs || [];
+  const bestPair   = pairs[0];
+  const extraPairs = pairs.slice(1);
+
+  if (!bestPair || !bestPair.they_offer) return '';
+
+  const offerSkill  = bestPair.they_offer;
+  const wantSkill   = bestPair.they_want;
+  const offerLevel  = offerSkill.level || 'intermediate';
+
+  // Build the exchange display row
+  const exchangeRow = isMutual && wantSkill
+    ? `<div class="exchange-arrow">
+        <span>📚</span>
+        <div>
+          <div style="font-weight:600;color:var(--text-primary);">${offerSkill.skill_name}</div>
+          <span class="badge badge-${levelColors[offerLevel] || 'purple'}" style="font-size:0.68rem;">${offerLevel}</span>
+        </div>
+        <span style="flex:1;text-align:center;font-size:1.1rem;">⇄</span>
+        <div>
+          <div style="font-weight:600;color:var(--text-primary);">${wantSkill.skill_name}</div>
+          <span class="badge badge-cyan" style="font-size:0.68rem;">they want</span>
+        </div>
+        <span>🎯</span>
+      </div>`
+    : `<div class="exchange-arrow">
+        <span>📚</span>
+        <div style="flex:1;">
+          <div style="font-weight:600;color:var(--text-primary);">${offerSkill.skill_name}</div>
+          <span class="badge badge-${levelColors[offerLevel] || 'purple'}" style="font-size:0.68rem;">${offerLevel}</span>
+        </div>
+        <span class="badge badge-amber" style="font-size:0.72rem;">they can teach you</span>
+      </div>`;
+
+  // More skill pairs
+  const morePairs = extraPairs.length > 0 ? `
+    <details style="cursor:pointer;">
+      <summary style="font-size:0.78rem;color:var(--text-muted);list-style:none;">
+        + ${extraPairs.length} more skill${extraPairs.length > 1 ? 's' : ''} →
+      </summary>
+      <div style="display:flex;flex-direction:column;gap:0.3rem;margin-top:0.4rem;">
+        ${extraPairs.map(p => `
+          <div class="exchange-arrow" style="font-size:0.78rem;">
+            <span style="color:var(--text-secondary)">${p.they_offer ? p.they_offer.skill_name : '—'}</span>
+            ${p.they_want ? `<span>⇄</span><span style="color:var(--text-secondary)">${p.they_want.skill_name}</span>` : ''}
+          </div>`).join('')}
+      </div>
+    </details>` : '';
+
+  // Build the request button
+  const requestBtn = isMutual && wantSkill
+    ? `<button class="btn btn-primary btn-full btn-sm"
+         onclick="openRequestModal(${match.user_id},'${match.name.replace(/'/g,"\\'")}',
+           '${offerSkill.skill_name.replace(/'/g,"\\'")}',${offerSkill.skill_id},
+           '${wantSkill.skill_name.replace(/'/g,"\\'")}',${wantSkill.skill_id})">
+         🤝 Send Mutual Exchange Request
+       </button>`
+    : `<button class="btn btn-cyan btn-full btn-sm"
+         onclick="openPartialRequestModal(${match.user_id},'${match.name.replace(/'/g,"\\'")}',
+           '${offerSkill.skill_name.replace(/'/g,"\\'")}',${offerSkill.skill_id})">
+         📬 Send Learning Request
+       </button>`;
+
+  return `
+    <div class="match-card" style="${isMutual ? 'border-color:rgba(139,92,246,0.3);' : ''}">
+      <div style="display:flex;align-items:center;gap:1rem;">
+        <div class="match-avatar">${initials}</div>
+        <div style="flex:1;">
+          <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+            <span style="font-weight:700;font-size:1rem;">${match.name}</span>
+            <span class="badge ${isMutual ? 'badge-purple' : 'badge-cyan'}" style="font-size:0.68rem;">
+              ${isMutual ? '🤝 Mutual' : '📖 One-way'}
+            </span>
+          </div>
+          <div style="display:flex;align-items:center;gap:0.4rem;margin-top:3px;">
+            <span class="stars" style="font-size:0.82rem;">${stars}</span>
+            <span style="font-size:0.75rem;color:var(--text-muted);">${rating}</span>
+          </div>
+        </div>
+        <span class="badge badge-green">💰 ${match.credits}</span>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:0.4rem;">
+        <div class="pair-label">${isMutual ? '✨ Mutual Exchange' : '📖 Can Teach You'}</div>
+        ${exchangeRow}
+        ${morePairs}
+      </div>
+
+      ${requestBtn}
+    </div>`;
+}
+
+// Modal for MUTUAL match
+function openRequestModal(receiverId, name, theyOffer, theyOfferSkillId, theyWant, theyWantSkillId) {
+  pendingRequest = {
+    receiver_id:        receiverId,
+    skill_offered_id:   theyWantSkillId,
+    skill_requested_id: theyOfferSkillId,
+    name
+  };
+  document.getElementById('modal-username').textContent    = name;
+  document.getElementById('modal-you-offer').textContent   = theyWant;
+  document.getElementById('modal-you-receive').textContent = theyOffer;
+  openModal('modal-request');
+}
+
+// Modal for PARTIAL match (one-way) — pick a skill to offer in return
+function openPartialRequestModal(receiverId, name, theyOffer, theyOfferSkillId) {
+  pendingRequest = {
+    receiver_id:        receiverId,
+    skill_offered_id:   theyOfferSkillId,  // what I'm requesting
+    skill_requested_id: theyOfferSkillId,  // same skill (they teach me)
+    name
+  };
+  document.getElementById('modal-username').textContent    = name;
+  document.getElementById('modal-you-offer').textContent   = '(Add offered skills to send a full exchange)';
+  document.getElementById('modal-you-receive').textContent = theyOffer;
+  openModal('modal-request');
+}
+
+async function confirmRequest() {
+  const btn = document.getElementById('btn-confirm-request');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Sending…';
+
+  const data = await apiPost('/send-request', pendingRequest);
+  if (data && data.success) {
+    showToast(data.message, 'success');
+    closeModal('modal-request');
+  } else {
+    showToast(data?.message || 'Failed to send request.', 'error');
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = 'Send Request 🚀';
+}
+</script>
+</body>
+</html>

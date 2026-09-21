@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Add Skills — Skill Exchange Platform</title>
+  <meta name="description" content="Add skills you can offer or want to learn on the Skill Exchange Platform." />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div id="toast-container"></div>
+
+<nav class="navbar">
+  <div class="container">
+    <a href="dashboard.html" class="navbar-brand">
+      <div class="logo-icon">🔄</div>
+      <span>Skill Exchange</span>
+    </a>
+    <ul class="navbar-nav">
+      <li><a href="dashboard.html">🏠 Dashboard</a></li>
+      <li><a href="add-skills.html">➕ Add Skills</a></li>
+      <li><a href="match.html">🤝 Match</a></li>
+      <li><a href="requests.html">📬 Requests</a></li>
+      <li><a href="profile.html">👤 Profile</a></li>
+      <li><span class="nav-credits-badge" id="nav-credits">💰 — credits</span></li>
+      <li><button class="btn-logout" id="btn-logout">Sign Out</button></li>
+    </ul>
+  </div>
+</nav>
+
+<main class="container" style="padding-bottom:4rem;">
+
+  <div class="page-header">
+    <h1>➕ <span class="gradient-text">Add Skills</span></h1>
+    <p>Tell the community what you can teach and what you want to learn to get matched.</p>
+  </div>
+
+  <div class="grid-2" style="align-items:start;">
+
+    <!-- Offer a Skill -->
+    <div class="card card-gradient">
+      <div class="section-title"><span>📚</span> I Can Teach This</div>
+      <p style="font-size:0.85rem;margin-bottom:1.5rem;">Add a skill you're confident teaching. Others with matching wants will be recommended to you.</p>
+
+      <form id="form-offer" style="display:flex;flex-direction:column;gap:1rem;">
+        <div class="form-group">
+          <label for="offer-skill">Select Skill</label>
+          <select id="offer-skill" required>
+            <option value="">Choose a skill…</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="offer-level">Your Proficiency Level</label>
+          <select id="offer-level" required>
+            <option value="">Choose level…</option>
+            <option value="beginner">🌱 Beginner</option>
+            <option value="intermediate">📈 Intermediate</option>
+            <option value="expert">🏆 Expert</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary" id="btn-offer">
+          ➕ Add to Offered Skills
+        </button>
+      </form>
+
+      <div class="divider"></div>
+      <div class="section-title" style="font-size:0.95rem;"><span>📋</span> Currently Offering</div>
+      <div id="current-offered">
+        <div class="spinner" style="margin:1rem auto;display:block;"></div>
+      </div>
+    </div>
+
+    <!-- Want a Skill -->
+    <div class="card card-gradient">
+      <div class="section-title"><span>🎯</span> I Want to Learn This</div>
+      <p style="font-size:0.85rem;margin-bottom:1.5rem;">Add a skill you'd like to learn. We'll find users who can teach it and want what you offer.</p>
+
+      <form id="form-want" style="display:flex;flex-direction:column;gap:1rem;">
+        <div class="form-group">
+          <label for="want-skill">Select Skill</label>
+          <select id="want-skill" required>
+            <option value="">Choose a skill…</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="want-priority">Priority Level
+            <span style="font-weight:400;color:var(--text-muted)">(1 = low, 5 = urgent)</span>
+          </label>
+          <select id="want-priority" required>
+            <option value="">Choose priority…</option>
+            <option value="1">1 — Low</option>
+            <option value="2">2 — Mild</option>
+            <option value="3">3 — Medium</option>
+            <option value="4">4 — High</option>
+            <option value="5">5 — Urgent 🔥</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-cyan" id="btn-want">
+          🎯 Add to Wanted Skills
+        </button>
+      </form>
+
+      <div class="divider"></div>
+      <div class="section-title" style="font-size:0.95rem;"><span>📋</span> Currently Wanting</div>
+      <div id="current-wanted">
+        <div class="spinner" style="margin:1rem auto;display:block;"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- All Available Skills Table -->
+  <div class="card" style="margin-top:2rem;">
+    <div class="section-title"><span>🗂️</span> All Available Skills</div>
+    <p style="font-size:0.85rem;margin-bottom:1.25rem;color:var(--text-muted)">Browse all skills on the platform by category.</p>
+    <div id="all-skills-grid" style="display:flex;flex-wrap:wrap;gap:0.5rem;">
+      <div class="spinner" style="margin:1rem auto;display:block;"></div>
+    </div>
+  </div>
+
+</main>
+
+<script src="app.js"></script>
+<script>
+requireAuth();
+
+const levelEmoji = { beginner: '🌱', intermediate: '📈', expert: '🏆' };
+const priorityLabel = { 1:'Low', 2:'Mild', 3:'Medium', 4:'High', 5:'Urgent 🔥' };
+const categoryColors = {
+  'Technology':'purple', 'Music':'pink', 'Languages':'cyan',
+  'Arts':'amber', 'Health':'green', 'Business':'amber', 'Lifestyle':'cyan'
+};
+
+document.addEventListener('DOMContentLoaded', async () => {
+  await Promise.all([loadAllSkills(), loadMySkills()]);
+});
+
+async function loadAllSkills() {
+  const data = await apiGet('/all-skills');
+  if (!data || !data.success) return;
+
+  const skills = data.skills;
+  const selectOffer = document.getElementById('offer-skill');
+  const selectWant  = document.getElementById('want-skill');
+
+  // Group by category
+  const grouped = {};
+  skills.forEach(s => {
+    if (!grouped[s.category]) grouped[s.category] = [];
+    grouped[s.category].push(s);
+  });
+
+  // Populate selects with optgroups
+  [selectOffer, selectWant].forEach(sel => {
+    Object.entries(grouped).forEach(([cat, items]) => {
+      const group = document.createElement('optgroup');
+      group.label = cat;
+      items.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s.skill_id;
+        opt.textContent = s.skill_name;
+        group.appendChild(opt);
+      });
+      sel.appendChild(group);
+    });
+  });
+
+  // Render all-skills grid
+  const grid = document.getElementById('all-skills-grid');
+  grid.innerHTML = skills.map(s => {
+    const color = categoryColors[s.category] || 'purple';
+    return `<span class="badge badge-${color}">${s.skill_name}</span>`;
+  }).join('');
+}
+
+async function loadMySkills() {
+  const data = await apiGet('/my-skills');
+  if (!data || !data.success) return;
+
+  const { offered, wanted } = data;
+
+  document.getElementById('current-offered').innerHTML =
+    offered.length === 0
+      ? `<p style="color:var(--text-muted);font-size:0.85rem;">None yet</p>`
+      : `<div class="skill-tags">${offered.map(s => `
+          <div class="skill-tag">
+            ${levelEmoji[s.skill_level] || ''}  ${s.skill_name}
+            <span class="badge badge-purple" style="font-size:0.68rem">${s.skill_level}</span>
+            <span class="remove-btn" onclick="removeOffer(${s.id}, this)" title="Remove">×</span>
+          </div>`).join('')}</div>`;
+
+  document.getElementById('current-wanted').innerHTML =
+    wanted.length === 0
+      ? `<p style="color:var(--text-muted);font-size:0.85rem;">None yet</p>`
+      : `<div class="skill-tags">${wanted.map(s => `
+          <div class="skill-tag skill-tag-cyan">
+            ${s.skill_name}
+            <span class="badge badge-cyan" style="font-size:0.68rem">P${s.priority_level}</span>
+            <span class="remove-btn" onclick="removeWanted(${s.id}, this)" title="Remove">×</span>
+          </div>`).join('')}</div>`;
+}
+
+// Form: Add Offered Skill
+document.getElementById('form-offer').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const skill_id    = document.getElementById('offer-skill').value;
+  const skill_level = document.getElementById('offer-level').value;
+  if (!skill_id || !skill_level) return showToast('Please select a skill and level.', 'error');
+
+  const btn = document.getElementById('btn-offer');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>';
+
+  const data = await apiPost('/add-skill-offer', { skill_id: parseInt(skill_id), skill_level });
+  if (data && data.success) {
+    showToast('Skill offer added! ✅', 'success');
+    document.getElementById('form-offer').reset();
+    await loadMySkills();
+  } else {
+    showToast(data?.message || 'Failed to add skill.', 'error');
+  }
+  btn.disabled = false;
+  btn.innerHTML = '➕ Add to Offered Skills';
+});
+
+// Form: Add Wanted Skill
+document.getElementById('form-want').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const skill_id       = document.getElementById('want-skill').value;
+  const priority_level = document.getElementById('want-priority').value;
+  if (!skill_id || !priority_level) return showToast('Please select a skill and priority.', 'error');
+
+  const btn = document.getElementById('btn-want');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>';
+
+  const data = await apiPost('/add-skill-wanted', { skill_id: parseInt(skill_id), priority_level: parseInt(priority_level) });
+  if (data && data.success) {
+    showToast('Skill want added! ✅', 'success');
+    document.getElementById('form-want').reset();
+    await loadMySkills();
+  } else {
+    showToast(data?.message || 'Failed to add skill.', 'error');
+  }
+  btn.disabled = false;
+  btn.innerHTML = '🎯 Add to Wanted Skills';
+});
+
+async function removeOffer(id, el) {
+  const data = await apiDelete(`/remove-skill-offer/${id}`);
+  if (data?.success) { el.closest('.skill-tag').remove(); showToast('Removed.', 'info'); }
+  else showToast(data?.message || 'Failed.', 'error');
+}
+
+async function removeWanted(id, el) {
+  const data = await apiDelete(`/remove-skill-wanted/${id}`);
+  if (data?.success) { el.closest('.skill-tag').remove(); showToast('Removed.', 'info'); }
+  else showToast(data?.message || 'Failed.', 'error');
+}
+</script>
+</body>
+</html>

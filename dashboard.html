@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard — Skill Exchange Platform</title>
+  <meta name="description" content="Your Skill Exchange dashboard — manage credits, skills offered and wanted." />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div id="toast-container"></div>
+
+<!-- Navigation -->
+<nav class="navbar">
+  <div class="container">
+    <a href="dashboard.html" class="navbar-brand">
+      <div class="logo-icon">🔄</div>
+      <span>Skill Exchange</span>
+    </a>
+    <ul class="navbar-nav">
+      <li><a href="dashboard.html">🏠 Dashboard</a></li>
+      <li><a href="add-skills.html">➕ Add Skills</a></li>
+      <li><a href="match.html">🤝 Match</a></li>
+      <li><a href="requests.html">📬 Requests</a></li>
+      <li><a href="profile.html">👤 Profile</a></li>
+      <li><span class="nav-credits-badge" id="nav-credits">💰 — credits</span></li>
+      <li><button class="btn-logout" id="btn-logout">Sign Out</button></li>
+    </ul>
+  </div>
+</nav>
+
+<main class="container" style="padding-bottom:4rem;">
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <h1>Welcome back, <span class="gradient-text" id="user-name">…</span> 👋</h1>
+    <p>Here's your skill exchange overview. Teach what you know, learn what you need.</p>
+  </div>
+
+  <!-- Stats Row -->
+  <div class="stats-row" id="stats-row">
+    <div class="stat-card">
+      <div class="stat-icon">💰</div>
+      <div class="stat-value gradient-text" id="stat-credits">—</div>
+      <div class="stat-label">Credits</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">📚</div>
+      <div class="stat-value" id="stat-offered">—</div>
+      <div class="stat-label">Skills Offered</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">🎯</div>
+      <div class="stat-value" id="stat-wanted">—</div>
+      <div class="stat-label">Skills Wanted</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">⭐</div>
+      <div class="stat-value" id="stat-rating">—</div>
+      <div class="stat-label">Rating</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">🏆</div>
+      <div class="stat-value" id="stat-completed">—</div>
+      <div class="stat-label">Exchanges Done</div>
+    </div>
+  </div>
+
+  <!-- Quick Actions -->
+  <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-bottom:2.5rem;">
+    <a href="add-skills.html" class="btn btn-primary">➕ Add a Skill</a>
+    <a href="match.html"      class="btn btn-cyan">🤝 Find Matches</a>
+    <a href="requests.html"   class="btn btn-ghost">📬 View Requests</a>
+    <a href="profile.html"    class="btn btn-ghost">⭐ My Profile</a>
+  </div>
+
+  <div class="grid-2" id="skills-grid">
+
+    <!-- Skills Offered -->
+    <div class="card card-gradient">
+      <div class="section-title">
+        <span>📚</span> Skills I Offer
+        <a href="add-skills.html" style="margin-left:auto;font-size:0.78rem;color:var(--accent-purple);text-decoration:none;font-weight:600">+ Add more</a>
+      </div>
+      <div id="offered-list">
+        <div class="empty-state">
+          <div class="empty-icon">📭</div>
+          <h4>No skills offered yet</h4>
+          <p>Share your expertise with the community!</p>
+          <a href="add-skills.html" class="btn btn-primary btn-sm" style="margin-top:1rem">Add a Skill</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Skills Wanted -->
+    <div class="card card-gradient">
+      <div class="section-title">
+        <span>🎯</span> Skills I Want to Learn
+        <a href="add-skills.html" style="margin-left:auto;font-size:0.78rem;color:var(--accent-cyan);text-decoration:none;font-weight:600">+ Add more</a>
+      </div>
+      <div id="wanted-list">
+        <div class="empty-state">
+          <div class="empty-icon">🎯</div>
+          <h4>No skills wanted yet</h4>
+          <p>Tell us what you want to learn to find matches!</p>
+          <a href="add-skills.html" class="btn btn-cyan btn-sm" style="margin-top:1rem">Add Wanted Skill</a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Recent Requests preview -->
+  <div style="margin-top:2rem;">
+    <div class="section-title"><span>📬</span> Recent Activity</div>
+    <div id="recent-requests">
+      <div class="card" style="text-align:center;padding:2rem;">
+        <div class="spinner" style="margin:0 auto;"></div>
+        <p style="margin-top:1rem;font-size:0.85rem;">Loading activity…</p>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script src="app.js"></script>
+<script>
+const user = requireAuth();
+
+document.addEventListener('DOMContentLoaded', async () => {
+  if (!user) return;
+
+  // Populate header name from session
+  document.getElementById('user-name').textContent = user.name;
+
+  // ── Single API call: /api/dashboard ──────────────────────────
+  const data = await apiGet('/dashboard');
+
+  if (data && data.success) {
+    const { stats, recent_activity } = data;
+
+    // Stat cards (all from one DB round-trip)
+    document.getElementById('stat-credits').textContent   = stats.credits;
+    document.getElementById('stat-offered').textContent   = stats.skills_offered;
+    document.getElementById('stat-wanted').textContent    = stats.skills_wanted;
+    document.getElementById('stat-rating').textContent    = parseFloat(stats.rating || 0).toFixed(1);
+    document.getElementById('stat-completed').textContent = stats.exchanges_completed;
+
+    // Update credits badge in nav too
+    updateUserCredits(stats.credits);
+
+    // Recent activity section
+    const statusColors = { pending:'amber', accepted:'cyan', rejected:'red', completed:'green' };
+    if (recent_activity.length === 0) {
+      document.getElementById('recent-requests').innerHTML = `
+        <div class="card" style="text-align:center;padding:2rem;">
+          <div class="empty-icon">📭</div>
+          <p>No exchange requests yet. <a href="match.html" style="color:var(--accent-purple)">Find matches</a> to get started!</p>
+        </div>`;
+    } else {
+      document.getElementById('recent-requests').innerHTML = `
+        <div style="display:flex;flex-direction:column;gap:0.75rem;">
+          ${recent_activity.map(r => `
+            <div class="card" style="padding:1rem 1.25rem;display:flex;align-items:center;gap:1rem;justify-content:space-between;">
+              <div>
+                <strong style="font-size:0.9rem">${r.other_user_name}</strong>
+                <div style="font-size:0.78rem;color:var(--text-muted);margin-top:2px">
+                  ${r.skill_offered} ↔ ${r.skill_requested}
+                  <span style="margin-left:0.4rem;opacity:0.6">(${r.direction})</span>
+                </div>
+              </div>
+              <span class="badge badge-${statusColors[r.status]}">${r.status}</span>
+            </div>
+          `).join('')}
+          <a href="requests.html" class="btn btn-ghost btn-sm" style="width:fit-content">View all requests →</a>
+        </div>`;
+    }
+  }
+
+  // ── Load skills list for tag display ──
+  const skillsData = await apiGet('/my-skills');
+  if (skillsData && skillsData.success) {
+    const { offered, wanted } = skillsData;
+
+    document.getElementById('stat-offered').textContent = offered.length;
+    document.getElementById('stat-wanted').textContent  = wanted.length;
+
+    // Render offered skills
+    if (offered.length > 0) {
+      document.getElementById('offered-list').innerHTML = `
+        <div class="skill-tags">
+          ${offered.map(s => `
+            <div class="skill-tag">
+              ${s.skill_name}
+              <span class="badge badge-purple" style="font-size:0.68rem;padding:2px 6px">${s.skill_level}</span>
+              <span class="remove-btn" onclick="removeSkill('offer', ${s.id}, this)" title="Remove">×</span>
+            </div>
+          `).join('')}
+        </div>`;
+    }
+
+    // Render wanted skills
+    if (wanted.length > 0) {
+      document.getElementById('wanted-list').innerHTML = `
+        <div class="skill-tags">
+          ${wanted.map(s => `
+            <div class="skill-tag skill-tag-cyan">
+              ${s.skill_name}
+              <span class="badge badge-cyan" style="font-size:0.68rem;padding:2px 6px">P:${s.priority_level}</span>
+              <span class="remove-btn" onclick="removeSkill('wanted', ${s.id}, this)" title="Remove">×</span>
+            </div>
+          `).join('')}
+        </div>`;
+    }
+  }
+
+  // Load recent requests
+  const reqData = await apiGet('/my-requests');
+  if (reqData && reqData.success) {
+    const all = [...reqData.sent.slice(0,3), ...reqData.received.slice(0,3)]
+      .sort((a,b) => new Date(b.created_at) - new Date(a.created_at))
+      .slice(0, 4);
+
+    if (all.length === 0) {
+      document.getElementById('recent-requests').innerHTML = `
+        <div class="card" style="text-align:center;padding:2rem;">
+          <div class="empty-icon">📭</div>
+          <p>No exchange requests yet. <a href="match.html" style="color:var(--accent-purple)">Find matches</a> to get started!</p>
+        </div>`;
+    } else {
+      const statusColors = { pending:'amber', accepted:'cyan', rejected:'red', completed:'green' };
+      document.getElementById('recent-requests').innerHTML = `
+        <div style="display:flex;flex-direction:column;gap:0.75rem;">
+          ${all.map(r => `
+            <div class="card" style="padding:1rem 1.25rem;display:flex;align-items:center;gap:1rem;justify-content:space-between;">
+              <div>
+                <strong style="font-size:0.9rem">${r.other_user_name}</strong>
+                <div style="font-size:0.78rem;color:var(--text-muted);margin-top:2px">
+                  ${r.skill_offered} ↔ ${r.skill_requested}
+                </div>
+              </div>
+              <span class="badge badge-${statusColors[r.status]}">${r.status}</span>
+            </div>
+          `).join('')}
+          <a href="requests.html" class="btn btn-ghost btn-sm" style="width:fit-content">View all requests →</a>
+        </div>`;
+    }
+  }
+});
+
+async function removeSkill(type, id, el) {
+  const endpoint = type === 'offer' ? `/remove-skill-offer/${id}` : `/remove-skill-wanted/${id}`;
+  const data = await apiDelete(endpoint);
+  if (data && data.success) {
+    el.closest('.skill-tag').remove();
+    showToast('Skill removed.', 'info');
+  } else {
+    showToast(data?.message || 'Failed to remove skill.', 'error');
+  }
+}
+</script>
+</body>
+</html>

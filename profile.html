@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Profile — Skill Exchange Platform</title>
+  <meta name="description" content="View your Skill Exchange profile, ratings, feedback, and exchange history." />
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .profile-hero {
+      background:    linear-gradient(135deg, rgba(139,92,246,0.15) 0%, rgba(6,182,212,0.08) 100%);
+      border:        1px solid var(--border-glass);
+      border-radius: var(--radius-xl);
+      padding:       2.5rem;
+      display:       flex;
+      align-items:   center;
+      gap:           2rem;
+      margin-bottom: 2rem;
+      flex-wrap:     wrap;
+    }
+    .profile-avatar {
+      width:           88px;
+      height:          88px;
+      border-radius:   50%;
+      background:      var(--grad-main);
+      display:         flex;
+      align-items:     center;
+      justify-content: center;
+      font-size:       2rem;
+      font-weight:     800;
+      color:           white;
+      flex-shrink:     0;
+      box-shadow:      0 0 30px rgba(139,92,246,0.4);
+    }
+    .profile-info { flex: 1; }
+    .profile-name { font-size: 1.8rem; font-weight: 800; }
+    .profile-email { color: var(--text-muted); font-size: 0.875rem; margin-top: 2px; }
+    .profile-meta { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 0.75rem; }
+
+    .rating-card {
+      background:    var(--bg-card);
+      border:        1px solid var(--border-glass);
+      border-radius: var(--radius-md);
+      padding:       1.1rem 1.25rem;
+      display:       flex;
+      gap:           1rem;
+      align-items:   flex-start;
+      transition:    var(--transition);
+    }
+    .rating-card:hover { border-color: var(--border-hover); background: var(--bg-card-hover); }
+    .rating-avatar-sm {
+      width:           38px;
+      height:          38px;
+      border-radius:   50%;
+      background:      var(--grad-main);
+      display:         flex;
+      align-items:     center;
+      justify-content: center;
+      font-size:       0.9rem;
+      font-weight:     700;
+      color:           white;
+      flex-shrink:     0;
+    }
+    .rating-stars { color: #f59e0b; font-size: 1rem; }
+    .rating-text  { font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem; line-height: 1.5; }
+    .rating-date  { font-size: 0.72rem; color: var(--text-muted); margin-top: 4px; }
+
+    .big-rating {
+      font-size:   3.5rem;
+      font-weight: 800;
+      line-height: 1;
+    }
+    .rating-bar-wrap { display: flex; flex-direction: column; gap: 0.3rem; }
+    .rating-bar-row { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; }
+    .rating-bar {
+      flex:          1;
+      height:        6px;
+      background:    rgba(255,255,255,0.08);
+      border-radius: 3px;
+      overflow:      hidden;
+    }
+    .rating-bar-fill {
+      height:        100%;
+      background:    linear-gradient(90deg, #f59e0b, #f97316);
+      border-radius: 3px;
+      transition:    width 0.8s ease;
+    }
+  </style>
+</head>
+<body>
+<div id="toast-container"></div>
+
+<nav class="navbar">
+  <div class="container">
+    <a href="dashboard.html" class="navbar-brand">
+      <div class="logo-icon">🔄</div>
+      <span>Skill Exchange</span>
+    </a>
+    <ul class="navbar-nav">
+      <li><a href="dashboard.html">🏠 Dashboard</a></li>
+      <li><a href="add-skills.html">➕ Add Skills</a></li>
+      <li><a href="match.html">🤝 Match</a></li>
+      <li><a href="requests.html">📬 Requests</a></li>
+      <li><a href="profile.html">👤 Profile</a></li>
+      <li><span class="nav-credits-badge" id="nav-credits">💰 — credits</span></li>
+      <li><button class="btn-logout" id="btn-logout">Sign Out</button></li>
+    </ul>
+  </div>
+</nav>
+
+<main class="container" style="padding-bottom:4rem;">
+
+  <div class="page-header">
+    <h1>👤 <span class="gradient-text">My Profile</span></h1>
+    <p>Your exchange reputation, ratings, and activity at a glance.</p>
+  </div>
+
+  <!-- Profile Hero -->
+  <div class="profile-hero" id="profile-hero">
+    <div style="text-align:center;color:var(--text-muted)">
+      <div class="spinner" style="margin:0 auto;"></div>
+      <p style="margin-top:0.5rem;font-size:0.85rem;">Loading profile…</p>
+    </div>
+  </div>
+
+  <div class="grid-2" style="align-items:start;">
+
+    <!-- Rating Summary -->
+    <div class="card card-gradient">
+      <div class="section-title"><span>⭐</span> Rating Summary</div>
+      <div id="rating-summary" style="display:flex;align-items:center;gap:2rem;flex-wrap:wrap;min-height:80px;">
+        <div class="spinner" style="margin:0 auto;"></div>
+      </div>
+    </div>
+
+    <!-- Exchange Stats -->
+    <div class="card card-gradient">
+      <div class="section-title"><span>📊</span> Activity Stats</div>
+      <div id="activity-stats" style="display:flex;flex-direction:column;gap:0.75rem;">
+        <div class="spinner" style="margin:0 auto;"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Skills Section -->
+  <div class="grid-2" style="margin-top:1.5rem;align-items:start;">
+    <div class="card">
+      <div class="section-title"><span>📚</span> Skills I Offer</div>
+      <div id="profile-offered">
+        <div class="spinner" style="margin:1rem auto;display:block;"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="section-title"><span>🎯</span> Skills I Want</div>
+      <div id="profile-wanted">
+        <div class="spinner" style="margin:1rem auto;display:block;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Feedback / Ratings List -->
+  <div style="margin-top:1.5rem;">
+    <div class="section-title"><span>💬</span> Feedback from Others</div>
+    <div id="ratings-list" style="display:flex;flex-direction:column;gap:0.75rem;">
+      <div class="spinner" style="margin:2rem auto;display:block;"></div>
+    </div>
+  </div>
+
+</main>
+
+<script src="app.js"></script>
+<script>
+requireAuth();
+
+document.addEventListener('DOMContentLoaded', async () => {
+  const [profileData, skillsData] = await Promise.all([
+    apiGet('/my-profile'),
+    apiGet('/my-skills')
+  ]);
+
+  if (!profileData || !profileData.success) {
+    showToast('Failed to load profile.', 'error');
+    return;
+  }
+
+  const { profile, ratings, exchanges_completed } = profileData;
+  const initials = profile.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0,2);
+  const avgRating = parseFloat(profile.rating || 0).toFixed(1);
+
+  // --- Profile Hero ---
+  document.getElementById('profile-hero').innerHTML = `
+    <div class="profile-avatar">${initials}</div>
+    <div class="profile-info">
+      <div class="profile-name gradient-text">${profile.name}</div>
+      <div class="profile-email">✉️ ${profile.email}</div>
+      <div class="profile-meta">
+        <span class="badge badge-purple">💰 ${profile.credits} Credits</span>
+        <span class="badge badge-amber">⭐ ${avgRating} Rating</span>
+        <span class="badge badge-green">🎉 ${exchanges_completed} Exchanges</span>
+        <span class="badge badge-cyan" style="font-size:0.7rem;">Member since ${new Date(profile.created_at).toLocaleDateString('en-US', {year:'numeric',month:'short'})}</span>
+      </div>
+    </div>
+    <div style="text-align:center;">
+      <a href="add-skills.html" class="btn btn-primary btn-sm">✏️ Edit Skills</a>
+    </div>`;
+
+  // --- Rating Summary with bar chart ---
+  const total = ratings.length;
+  const ratingCounts = [0,0,0,0,0]; // index 0 = 1 star
+  ratings.forEach(r => ratingCounts[r.rating - 1]++);
+
+  document.getElementById('rating-summary').innerHTML = `
+    <div style="text-align:center;">
+      <div class="big-rating gradient-text">${avgRating}</div>
+      <div class="stars" style="font-size:1.2rem;margin:0.25rem 0;">${renderStars(parseFloat(avgRating))}</div>
+      <div style="font-size:0.78rem;color:var(--text-muted);">${total} review${total !== 1 ? 's' : ''}</div>
+    </div>
+    <div class="rating-bar-wrap" style="flex:1;">
+      ${[5,4,3,2,1].map(star => {
+        const count = ratingCounts[star-1];
+        const pct   = total > 0 ? Math.round((count / total) * 100) : 0;
+        return `<div class="rating-bar-row">
+          <span style="color:#f59e0b;font-size:0.9rem;">${'★'.repeat(star)}</span>
+          <div class="rating-bar"><div class="rating-bar-fill" style="width:${pct}%"></div></div>
+          <span style="color:var(--text-muted);min-width:24px;">${count}</span>
+        </div>`;
+      }).join('')}
+    </div>`;
+
+  // --- Activity Stats ---
+  document.getElementById('activity-stats').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
+      <div class="stat-card"><div class="stat-icon">🎉</div><div class="stat-value gradient-text">${exchanges_completed}</div><div class="stat-label">Exchanges Done</div></div>
+      <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-value gradient-text">${profile.credits}</div><div class="stat-label">Credits</div></div>
+      <div class="stat-card"><div class="stat-icon">⭐</div><div class="stat-value gradient-text">${avgRating}</div><div class="stat-label">Avg Rating</div></div>
+      <div class="stat-card"><div class="stat-icon">💬</div><div class="stat-value gradient-text">${total}</div><div class="stat-label">Reviews</div></div>
+    </div>`;
+
+  // --- Skills ---
+  if (skillsData && skillsData.success) {
+    const levelEmoji = { beginner:'🌱', intermediate:'📈', expert:'🏆' };
+
+    document.getElementById('profile-offered').innerHTML =
+      skillsData.offered.length === 0
+        ? `<p style="color:var(--text-muted);font-size:0.85rem">None added yet. <a href="add-skills.html" style="color:var(--accent-purple)">Add skills →</a></p>`
+        : `<div class="skill-tags">${skillsData.offered.map(s => `
+            <span class="skill-tag">${levelEmoji[s.skill_level] || ''} ${s.skill_name}<span class="badge badge-purple" style="font-size:0.65rem;margin-left:4px">${s.skill_level}</span></span>`).join('')}</div>`;
+
+    document.getElementById('profile-wanted').innerHTML =
+      skillsData.wanted.length === 0
+        ? `<p style="color:var(--text-muted);font-size:0.85rem">None added yet.</p>`
+        : `<div class="skill-tags">${skillsData.wanted.map(s => `
+            <span class="skill-tag skill-tag-cyan">${s.skill_name}<span class="badge badge-cyan" style="font-size:0.65rem;margin-left:4px">P${s.priority_level}</span></span>`).join('')}</div>`;
+  }
+
+  // --- Feedback List ---
+  if (ratings.length === 0) {
+    document.getElementById('ratings-list').innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">💬</div>
+        <h4>No feedback yet</h4>
+        <p>Complete exchanges and ask partners to leave a review!</p>
+      </div>`;
+  } else {
+    document.getElementById('ratings-list').innerHTML = ratings.map(r => {
+      const initials = r.reviewer_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0,2);
+      return `
+        <div class="rating-card">
+          <div class="rating-avatar-sm">${initials}</div>
+          <div style="flex:1;">
+            <div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;">
+              <strong style="font-size:0.9rem;">${r.reviewer_name}</strong>
+              <span class="rating-stars">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</span>
+              <span class="badge badge-amber" style="font-size:0.68rem;">${r.rating}/5</span>
+            </div>
+            ${r.feedback ? `<div class="rating-text">"${r.feedback}"</div>` : ''}
+            <div class="rating-date">${new Date(r.created_at).toLocaleDateString('en-US', {year:'numeric',month:'short',day:'numeric'})}</div>
+          </div>
+        </div>`;
+    }).join('');
+  }
+});
+</script>
+</body>
+</html>
